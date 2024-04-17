@@ -6,6 +6,9 @@ package:
   copyright:
     - license: Apache-2.0
   dependencies:
+    runtime:
+      - iptables
+      - ip6tables
     provides:
       - istio-cni=${{package.full-version}}
 
