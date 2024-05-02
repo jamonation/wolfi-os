@@ -31,7 +31,6 @@ environment:
       - glibc-locale-en
       - libxml2-utils
       - maven
-      - nodejs
       - openjdk-17
       - openjdk-17-default-jvm
       - openssh-client
@@ -39,7 +38,6 @@ environment:
       - tini
       - ttf-dejavu
       - tzdata
-      - yarn
 
 pipeline:
   - uses: git-checkout
