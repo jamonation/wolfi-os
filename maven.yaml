@@ -18,6 +18,7 @@ environment:
       - maven
       - openjdk-11-default-jvm
       - openjdk-11-jre
+      - openjdk-8-jre
 
 pipeline:
   - uses: git-checkout
@@ -29,7 +30,6 @@ pipeline:
 
   - runs: |
       cd maven
-
 
       mkdir -p ${{targets.destdir}}/usr/share/java/maven
       mkdir -p ${{targets.destdir}}/usr/share/java/maven/bin
@@ -56,11 +56,64 @@ pipeline:
       install -m755 -Dt ${{targets.destdir}}/usr/share/java/maven/bin ./bin/mvnyjp
       ln -sf /usr/share/java/maven/bin/mvnyjp ${{targets.destdir}}/usr/bin/mvnyjp
 
-update:
-  enabled: true
-  github:
-    identifier: apache/maven
-    strip-prefix: maven-
+subpackages:
+  - name: maven-jdk8
+    description: "maven built with jdk 8"
+    dependencies:
+      provides:
+        - maven-jdk8=${{package.full-version}}
+      runtime:
+        - busybox
+        - coreutils
+        - glibc-locale-en
+        - netcat-openbsd
+    pipeline:
+      - runs: |
+          export JAVA_HOME="/usr/lib/jvm/java-1.8-openjdk/"
+          cd maven
+
+          # remove build artifacts from main jdk 11 package
+          rm -rf apache-maven-${{package.full-version}}
+
+          mkdir -p ${{targets.subpkgdir}}/usr/share/java/maven
+          mkdir -p ${{targets.subpkgdir}}/usr/share/java/maven/bin
+          mkdir -p ${{targets.subpkgdir}}/usr/share/java/maven/boot
+          mkdir -p ${{targets.subpkgdir}}/usr/share/java/maven/lib
+
+          mvn clean package
+
+          tar -xf ./apache-maven/target/apache-maven-${{package.version}}-bin.tar.gz
+          cd apache-maven-${{package.version}}
+          install -m644 -Dt ${{targets.subpkgdir}}/usr/share/java/maven/bin ./bin/*.conf
+          install -m644 -Dt ${{targets.subpkgdir}}/usr/share/java/maven/boot ./boot/*.jar
+          install -m644 -Dt ${{targets.subpkgdir}}/usr/share/java/maven/lib ./lib/*.jar
+          cp -Rp ./conf ${{targets.subpkgdir}}/usr/share/java/maven/
+
+          mkdir -p ${{targets.subpkgdir}}/usr/bin
+
+          install -m755 -Dt ${{targets.subpkgdir}}/usr/share/java/maven/bin ./bin/mvn
+          ln -sf /usr/share/java/maven/bin/mvn ${{targets.subpkgdir}}/usr/bin/mvn
+
+          install -m755 -Dt ${{targets.subpkgdir}}/usr/share/java/maven/bin ./bin/mvnDebug
+          ln -sf /usr/share/java/maven/bin/mvnDebug ${{targets.subpkgdir}}/usr/bin/mvnDebug
+
+          install -m755 -Dt ${{targets.subpkgdir}}/usr/share/java/maven/bin ./bin/mvnyjp
+          ln -sf /usr/share/java/maven/bin/mvnyjp ${{targets.subpkgdir}}/usr/bin/mvnyjp
+    test:
+      environment:
+        contents:
+          packages:
+            - openjdk-8-default-jvm
+            - openjdk-8-jre
+        environment:
+          JAVA_HOME: /usr/lib/jvm/java-1.8-openjdk
+      pipeline:
+        - runs: |
+            ${{targets.subpkgdir}}/usr/share/java/maven/bin/mvn --version |grep "IcedTea"
+        - working-directory: helloworld
+          runs: |
+            ${{targets.subpkgdir}}/usr/share/java/maven/bin/mvn clean install
+            java -cp target/hellowolfi-1.0-SNAPSHOT.jar com.example.HelloWolfi
 
 test:
   environment:
@@ -77,3 +130,9 @@ test:
       runs: |
         mvn clean install
         java -cp target/hellowolfi-1.0-SNAPSHOT.jar com.example.HelloWolfi
+
+update:
+  enabled: true
+  github:
+    identifier: apache/maven
+    strip-prefix: maven-
