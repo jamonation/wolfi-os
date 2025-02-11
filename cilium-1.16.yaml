@@ -158,6 +158,20 @@ subpackages:
           DESTDIR=${{targets.subpkgdir}} make install-aws
       - uses: strip
 
+  - name: ${{package.name}}-operator-azure
+    description: Azure operator for cilium
+    dependencies:
+      runtime:
+        - gops
+      provides:
+        - cilium-operator-azure=${{package.full-version}}
+    pipeline:
+      - runs: |
+          cd /home/build/operator
+          make cilium-operator-azure
+          DESTDIR=${{targets.subpkgdir}} make install-azure
+      - uses: strip
+
   - name: ${{package.name}}-hubble-relay
     description: Hubble relay
     dependencies:
